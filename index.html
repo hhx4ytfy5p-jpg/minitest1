@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="ja" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小テスト勉強</title>
+  <!-- Canva用SDK（プレビュー環境では存在しないためコメントアウト）
+  <script src="/_sdk/element_sdk.js"></script>
+  -->
+<script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+    
+    * {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    
+    .canvas-container {
+      background: white;
+      border: 3px solid #333;
+      border-radius: 0.5rem;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    
+    .question-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.5rem;
+    }
+    
+    .char-box {
+      display: inline-block;
+      margin: 0.5rem;
+      position: relative;
+    }
+    
+    .char-box.single {
+      width: 200px;
+      min-height: 280px; /* 答え表示などで高さが増えても重なりにくくする */
+    }
+
+    .char-box.multi {
+      width: 250px;
+      min-height: 280px;
+    }
+
+    .char-box.extra-large {
+      width: 400px;
+      min-height: 280px;
+    }
+
+    .flex-break {
+      flex-basis: 100%;
+      height: 0; /* 強制改行（次のマスを2行目へ） */
+    }
+
+    /* 描画中だけテキスト選択を強く抑止（iPadの青選択対策） */
+    .no-select, .no-select * {
+      -webkit-user-select: none !important;
+      user-select: none !important;
+      -webkit-touch-callout: none !important;
+    }
+
+    .answer-text {
+      text-align: center;
+      margin-top: 0.5rem;
+      font-size: 3rem;
+      font-weight: bold;
+      color: #10b981;
+      display: none; /* ★通常は非表示 */
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .show-answers .answer-text {
+      display: block; /* ★ボタンを押したときだけ表示 */
+    }
+    
+    .char-label {
+      text-align: center;
+      font-size: 1.1em; /* 元の読みやすい大きさ */
+      font-weight: bold;
+      color: #3b82f6;
+      margin-bottom: 0.9rem; /* ★マスとの間を広げて誤タッチ/選択を減らす */
+      min-height: 1.5em;
+      line-height: 1.2;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      pointer-events: none;
+    }
+    
+    .tool-selector {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .tool-btn {
+      padding: 0.5rem 1rem;
+      border: 2px solid #333;
+      border-radius: 0.5rem;
+      background: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    
+    .tool-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+    
+    .tool-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .feedback {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 1.5em;
+      font-weight: bold;
+      min-height: 2em;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    
+    .section {
+      display: none;
+    }
+    
+    .section.active {
+      display: block;
+    }
+    
+    .cover-card {
+      background: white;
+      border-radius: 2rem;
+      padding: 4rem 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .section-button {
+      width: 100%;
+      max-width: 400px;
+      padding: 1.5rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 1rem auto;
+      display: block;
+      border-radius: 1rem;
+      transition: all 0.3s;
+    }
+    
+    .section-button:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <!-- Canva用SDK（プレビュー環境では存在しないためコメントアウト）
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  -->
+</head>
+ <body class="h-full">
+  <div class="h-full w-full" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="h-full w-full overflow-auto">
+      <div class="min-h-full py-8 px-4">
+        <div class="max-w-4xl mx-auto">
+
+          <!-- Cover Section -->
+          <div id="cover-section" class="section active" style="min-height: 80vh; display: flex; align-items: center; justify-content: center;">
+            <div class="cover-card">
+              <h1 id="cover-title" class="text-5xl font-bold mb-6" style="color: #667eea;">小テスト勉強</h1>
+              <p id="cover-subtitle" class="text-2xl text-gray-600 mb-12">漢字の練習をしよう！</p>
+              <button id="goto-section-a" class="section-button bg-blue-600 hover:bg-blue-700 text-white">
+                <span id="section-a-title">問題 1〜10</span>
+              </button>
+              <button id="goto-section-b" class="section-button bg-purple-600 hover:bg-purple-700 text-white">
+                <span id="section-b-title">問題 11〜20</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section A: Questions 1-10 -->
+          <div id="questions-section-a" class="section">
+            <div class="text-center mb-6">
+              <button id="back-to-cover-a" class="px-6 py-3 bg-white hover:bg-gray-100 text-indigo-600 font-bold rounded-lg shadow-lg transition">← 表紙に戻る</button>
+            </div>
+            <h2 id="section-a-header" class="text-4xl font-bold text-white text-center mb-8">問題 1〜10</h2>
+            <div id="questions-container-a"></div>
+            <div class="text-center mt-8">
+              <button id="reset-btn-a" class="px-8 py-3 bg-white hover:bg-gray-100 text-indigo-600 font-bold rounded-lg shadow-lg transition">もう一度練習する</button>
+            </div>
+            <div class="text-center mt-4">
+              <button id="back-to-cover-a-bottom" class="px-6 py-3 bg-white hover:bg-gray-100 text-indigo-600 font-bold rounded-lg shadow-lg transition">← 表紙に戻る</button>
+            </div>
+          </div>
+
+          <!-- Section B: Questions 11-20 -->
+          <div id="questions-section-b" class="section">
+            <div class="text-center mb-6">
+              <button id="back-to-cover-b" class="px-6 py-3 bg-white hover:bg-gray-100 text-indigo-600 font-bold rounded-lg shadow-lg transition">← 表紙に戻る</button>
+            </div>
+            <h2 id="section-b-header" class="text-4xl font-bold text-white text-center mb-8">問題 11〜20</h2>
+            <div id="questions-container-b"></div>
+            <div class="text-center mt-8">
+              <button id="reset-btn-b" class="px-8 py-3 bg-white hover:bg-gray-100 text-indigo-600 font-bold rounded-lg shadow-lg transition">もう一度練習する</button>
+            </div>
+            <div class="text-center mt-4">
+              <button id="back-to-cover-b-bottom" class="px-6 py-3 bg-white hover:bg-gray-100 text-indigo-600 font-bold rounded-lg shadow-lg transition">← 表紙に戻る</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==============================
+    //  小テスト勉強（1〜10 / 11〜20）
+    //  - 問題の差し替えは QUESTIONS を編集するだけ
+    //  - 途中で2行目に送りたいときは "|/|" を入れる
+    //    例: "話す|/|下|手"（「下」を2行目に）
+    // ==============================
+
+    const APP = {
+      title: "小テスト勉強",
+      subtitle: "漢字の練習をしよう！",
+      sections: [
+        { id: 'a', title: '問題 1〜10', start: 1, end: 10 },
+        { id: 'b', title: '問題 11〜20', start: 11, end: 20 },
+      ]
+    };
+
+    // ★ここだけ直せば別の20問に差し替えできます
+    const QUESTIONS = [
+      { q: "メダカをしいくする。", a: "飼|育", f: "し|いく" },
+      { q: "タンポポのわたげ。", a: "綿|毛", f: "わた|げ" },
+      { q: "きゃくをいまにとおす。", a: "客|居|間|通す", f: "きゃく|い|ま|とおす" },
+      { q: "えいきゅうにかわらない。", a: "永|久|変わらない", f: "えい|きゅう|かわらない" },
+      { q: "しみずがわく。", a: "清|水", f: "し|みず" },
+
+      { q: "かわらでいぬとあそぶ。", a: "川|原|犬|遊ぶ", f: "かわ|ら|いぬ|あそぶ" },
+      { q: "きずぐちをしょうどくする。", a: "口|消|毒", f: "ぐち|しょう|どく" },
+      { q: "しょうてんがいのやおや。", a: "商|店|街|八|百|屋", f: "しょう|てん|がい|や|お|や" },
+      { q: "はちじまでえいぎょうする。", a: "八|時|営|業", f: "はち|じ|えい|ぎょう" },
+      { q: "きせつのくだものをたべる。", a: "季|節|果|物|食べる", f: "き|せつ|くだ|もの|たべる" },
+
+      { q: "いもうとがまいごになる。", a: "妹|迷|子", f: "いもうと|まい|ご" },
+      { q: "めがねをかける。", a: "眼|鏡", f: "め|がね" },
+      { q: "ぼうはんブザーをならす。", a: "防|犯|鳴らす", f: "ぼう|はん|ならす" },
+      { q: "おんがくきょうしつのこうし。", a: "音|楽|教|室|講|師", f: "おん|がく|きょう|しつ|こう|し" },
+      { q: "せいりょくてきにけんきゅうする。", a: "精|力|的|研|究", f: "せい|りょく|てき|けん|きゅう" },
+
+      // ★要望: 「へ」を2行目へ（=「下」のマスを2行目へ）
+      { q: "はなすのがへただ。", a: "話す|/|下|手", f: "はなす|/|へ|た" },
+      { q: "いえでねこをかう。", a: "家|飼う", f: "いえ|かう" },
+      { q: "てんきょのたよりがとどく。", a: "転|居|便り", f: "てん|きょ|たより" },
+
+      // ★要望: 「こう」を2行目へ（=「幸」のマスを2行目へ）
+      { q: "すえながいこうふくをいのる。", a: "末|永い|/|幸|福", f: "すえ|ながい|/|こう|ふく" },
+      { q: "かぞくでのうぎょうをいとなむ。", a: "家|族|農|業|営む", f: "か|ぞく|のう|ぎょう|いとなむ" },
+    ];
+
+    // ===== ユーティリティ =====
+    const $ = (sel, root = document) => root.querySelector(sel);
+
+    function tokenize(aStr, fStr) {
+      const a = (aStr || '').split('|');
+      const f = (fStr || '').split('|');
+      const max = Math.max(a.length, f.length);
+      const out = [];
+      for (let i = 0; i < max; i++) {
+        const at = (a[i] ?? '').trim();
+        const ft = (f[i] ?? '').trim();
+        if (at === '/' || ft === '/' || at === 'BR' || ft === 'BR') { out.push({ br: true }); continue; }
+        if (!at) continue;
+        out.push({ t: at, f: ft });
+      }
+      return out;
+    }
+
+    // ===== 状態（1始まり） =====
+    const N = QUESTIONS.length;
+    const tool = Array(N + 1).fill('pen');
+    const parts = Array.from({ length: N + 1 }, () => []); // parts[q] = [{canvas, ctx, answerEl}, ...]
+
+    // ===== 画面切り替え =====
+    function showSection(sectionId) {
+      ['cover-section', 'questions-section-a', 'questions-section-b'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('active');
+        el.style.display = 'none';
+      });
+      const target = document.getElementById(sectionId);
+      if (target) {
+        target.classList.add('active');
+        target.style.display = 'block';
+      }
+      const sc = document.querySelector('.h-full.w-full.overflow-auto');
+      if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ===== 描画（Pointer Eventsで統一：マウス/タッチ両対応） =====
+    function attachDraw(canvas, qNum) {
+      const ctx = canvas.getContext('2d');
+      ctx.lineCap = 'round';
+
+      let down = false;
+      let lx = 0, ly = 0;
+
+      const pos = (e) => {
+        const r = canvas.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      };
+
+      const stroke = (from, to) => {
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        if (tool[qNum] === 'eraser') {
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.lineWidth = 14;
+        } else {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 4;
+        }
+        ctx.stroke();
+      };
+
+      const setNoSelect = (on) => {
+        // 描画中だけ全体の文字選択を抑止（誤選択を実用レベルで減らす）
+        document.documentElement.classList.toggle('no-select', on);
+      };
+
+      canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        down = true;
+        setNoSelect(true);
+        canvas.setPointerCapture(e.pointerId);
+        const p = pos(e);
+        lx = p.x; ly = p.y;
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!down) return;
+        e.preventDefault();
+        const p = pos(e);
+        stroke({ x: lx, y: ly }, p);
+        lx = p.x; ly = p.y;
+      });
+
+      const end = (e) => {
+        down = false;
+        setNoSelect(false);
+        try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+      };
+      canvas.addEventListener('pointerup', end);
+      canvas.addEventListener('pointercancel', end);
+
+      return ctx;
+    }
+
+    // ===== マス生成 =====
+    function makeBox(qNum, text, furi) {
+      const box = document.createElement('div');
+      const hasOkurigana = /[ぁ-ん]/.test(text);
+      const isXL = text.length >= 5;
+      box.className = 'char-box ' + (isXL ? 'extra-large' : (hasOkurigana ? 'multi' : 'single'));
+
+      const label = document.createElement('div');
+      label.className = 'char-label';
+      label.textContent = furi || '';
+
+      const canvas = document.createElement('canvas');
+      canvas.className = 'canvas-container';
+      canvas.width = isXL ? 450 : (hasOkurigana ? 300 : 200);
+      canvas.height = 200;
+
+      const ans = document.createElement('div');
+      ans.className = 'answer-text';
+      ans.textContent = text;
+
+      box.append(label, canvas, ans);
+
+      const ctx = attachDraw(canvas, qNum);
+      parts[qNum].push({ canvas, ctx, answerEl: ans });
+
+      return box;
+    }
+
+    // ===== 問題カード生成（短く・壊れにくく） =====
+    function buildCard(qNum) {
+      const item = QUESTIONS[qNum - 1];
+
+      const card = document.createElement('div');
+      card.className = 'question-card';
+
+      const h3 = document.createElement('h3');
+      h3.className = 'text-2xl font-bold text-gray-800 mb-4';
+      h3.textContent = `問題${qNum}`;
+
+      const q = document.createElement('p');
+      q.className = 'text-2xl text-gray-700 mb-4';
+      q.textContent = item?.q || '';
+
+      const hint = document.createElement('p');
+      hint.className = 'text-lg text-gray-600 mb-4';
+      hint.textContent = '下のマスに漢字を書いてください';
+
+      const toolSel = document.createElement('div');
+      toolSel.className = 'tool-selector';
+
+      const pen = document.createElement('button');
+      pen.className = 'tool-btn active';
+      pen.textContent = '✏️ ペン';
+
+      const er = document.createElement('button');
+      er.className = 'tool-btn';
+      er.textContent = '🧽 消しゴム';
+
+      toolSel.append(pen, er);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'flex justify-center flex-wrap';
+
+      const btnGroup = document.createElement('div');
+      btnGroup.className = 'button-group';
+
+      const ansBtn = document.createElement('button');
+      ansBtn.className = 'px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition';
+      ansBtn.textContent = '答えを見る';
+
+      btnGroup.append(ansBtn);
+
+      const feedback = document.createElement('div');
+      feedback.className = 'feedback';
+
+      card.append(h3, q, hint, toolSel, wrap, btnGroup, feedback);
+
+      const setTool = (t) => {
+        tool[qNum] = t;
+        pen.classList.toggle('active', t === 'pen');
+        er.classList.toggle('active', t === 'eraser');
+      };
+
+      const render = () => {
+        wrap.classList.remove('show-answers');
+        ansBtn.textContent = '答えを見る';
+        parts[qNum] = [];
+        wrap.innerHTML = '';
+
+        tokenize(item?.a || '', item?.f || '').forEach(tok => {
+          if (tok.br) {
+            const br = document.createElement('div');
+            br.className = 'flex-break';
+            wrap.appendChild(br);
+          } else {
+            wrap.appendChild(makeBox(qNum, tok.t, tok.f));
+          }
+        });
+
+        setTool('pen');
+        feedback.textContent = '';
+      };
+
+      // ツール
+      pen.addEventListener('click', () => setTool('pen'));
+      er.addEventListener('click', () => setTool('eraser'));
+
+      // 答えトグル（DOMを作り直さないので安定）
+      ansBtn.addEventListener('click', () => {
+        const showing = wrap.classList.toggle('show-answers');
+        ansBtn.textContent = showing ? '答えを消す' : '答えを見る';
+        feedback.textContent = '';
+      });
+
+      // 外からリセットできるように
+      card.__render = render;
+      render();
+      return card;
+    }
+
+    function buildSection(containerId, startNum, endNum) {
+      const c = document.getElementById(containerId);
+      if (!c) return;
+      c.innerHTML = '';
+      for (let n = startNum; n <= endNum; n++) c.appendChild(buildCard(n));
+    }
+
+    function resetSection(containerId) {
+      const c = document.getElementById(containerId);
+      if (!c) return;
+      c.querySelectorAll('.question-card').forEach(card => card.__render && card.__render());
+      const sc = document.querySelector('.h-full.w-full.overflow-auto');
+      if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ===== 起動 =====
+    document.addEventListener('DOMContentLoaded', () => {
+      // 表紙テキスト
+      const coverTitle = document.getElementById('cover-title');
+      const coverSub = document.getElementById('cover-subtitle');
+      if (coverTitle) coverTitle.textContent = APP.title;
+      if (coverSub) coverSub.textContent = APP.subtitle;
+
+      const aTitle = document.getElementById('section-a-title');
+      const bTitle = document.getElementById('section-b-title');
+      const aHeader = document.getElementById('section-a-header');
+      const bHeader = document.getElementById('section-b-header');
+      if (aTitle) aTitle.textContent = APP.sections[0].title;
+      if (bTitle) bTitle.textContent = APP.sections[1].title;
+      if (aHeader) aHeader.textContent = APP.sections[0].title;
+      if (bHeader) bHeader.textContent = APP.sections[1].title;
+
+      // 問題数チェック（事故予防）
+      if (QUESTIONS.length !== 20) {
+        console.warn('QUESTIONS は 20問 を想定しています。現在:', QUESTIONS.length);
+      }
+
+      // セクション生成
+      buildSection('questions-container-a', 1, 10);
+      buildSection('questions-container-b', 11, 20);
+
+      // ナビ
+      $('#goto-section-a')?.addEventListener('click', () => showSection('questions-section-a'));
+      $('#goto-section-b')?.addEventListener('click', () => showSection('questions-section-b'));
+      $('#back-to-cover-a')?.addEventListener('click', () => showSection('cover-section'));
+      $('#back-to-cover-a-bottom')?.addEventListener('click', () => showSection('cover-section'));
+      $('#back-to-cover-b')?.addEventListener('click', () => showSection('cover-section'));
+      $('#back-to-cover-b-bottom')?.addEventListener('click', () => showSection('cover-section'));
+
+      // リセット
+      $('#reset-btn-a')?.addEventListener('click', () => resetSection('questions-container-a'));
+      $('#reset-btn-b')?.addEventListener('click', () => resetSection('questions-container-b'));
+
+      // 初期表示
+      showSection('cover-section');
+    });
+  </script>
+</body>
+</html>
